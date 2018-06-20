@@ -7,7 +7,9 @@ if "%dst:~-1%" neq "\" (
   set dst=%dst%\
 )
 
-setlocal EnableDelayedExpansion
+if NOT EXIST %dst% mkdir %dst%
+
+setlocal EnableDelayedExpansion 
 
 for /r %src% %%i in (*.*) do (
     set pth=%%~fi
@@ -20,11 +22,24 @@ goto :eof
 
 :mkhlink
 set dstdir="%~dp1"
+set srcdir="%~dp2"
 set dst=%1
 set src=%2
-if NOT EXIST %dstdir% mkdir %dstdir%
-if NOT EXIST %dst% mklink /h %dst% %src%
+fsutil reparsepoint query "%srcdir:~1,-2%" > nul
+if ERRORLEVEL 1 (
+    if NOT EXIST %dstdir% mkdir %dstdir%
+    if NOT EXIST %dst% mklink /h %dst% %src%
+) else (
+    if NOT EXIST %dstdir% ( 
+        for /F "delims=? tokens=2,3" %%a in ('fsutil reparsepoint query "%srcdir:~1,-2%" ^| findstr ??') do set lnk=%%a
+            set lnk=!lnk:~1!
+            mklink /D %dstdir% "!lnk!" 
+            
+        )
+)
+set lnk=
 set dstdir=
+set srcdir=
 set dst=
 set src=
 goto :eof
